@@ -1,0 +1,35 @@
+name: RPGDrop
+version: '${version}'
+main: mizukichou.rpgdrop.RPGDropPlugin
+api-version: '26.2'
+description: Highly configurable custom entity-death drops with RPGItems integration. Supports zh_cn / zh_tw / ja_jp / en_us.
+author: mizukichou
+
+# 软依赖：有 RPGItems 则启用 RPGItem 掉落，没有也能正常运行原版物品掉落
+softdepend:
+  - RPGItems
+
+commands:
+  rpgdrop:
+    description: RPGDrop main command
+    aliases: [rdrop]
+    usage: /rdrop help
+    permission: rpgdrop.command
+
+permissions:
+  rpgdrop.admin:
+    description: Full access to RPGDrop
+    default: op
+    children:
+      rpgdrop.command: true
+      rpgdrop.reload: true
+      rpgdrop.gui: true
+  rpgdrop.command:
+    description: Use the /rdrop command
+    default: op
+  rpgdrop.reload:
+    description: Use /rdrop reload
+    default: op
+  rpgdrop.gui:
+    description: Use /rdrop gui
+    default: op

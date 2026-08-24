@@ -1,0 +1,13 @@
+build/
+.gradle/
+out/
+*.class
+libs/*.jar
+.idea/
+*.iml
+.vscode/
+
+# 本地测试服（runServer 生成）
+run/
+# 测试服依赖插件（私有 jar，不上传）
+test-plugins/*.jar

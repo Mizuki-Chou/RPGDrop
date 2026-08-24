@@ -1,0 +1,64 @@
+# ============================================================
+#  RPGDrop 掉落规则
+#
+#  概率单位约定（全项目统一）：
+#    chance: 0.01  表示 0.01%（万分之一），不是 1%
+#    chance: 100   表示 100% 必掉
+#    chance: 0     表示永不掉落（可用于测试）
+#
+#  item.type:
+#    RPGITEM  -> id 填 RPGItems 里的物品 ID（真实 RPGItem，由 RPGItems API 生成）
+#    VANILLA  -> material 填原版物品名（如 DIAMOND）
+#
+#  worlds.mode: WHITELIST 表示只有 list 中的世界生效（V0.1 仅支持 WHITELIST）
+# ============================================================
+
+drops:
+
+  nekomoon_broke:
+    enabled: true
+
+    entities:
+      - ZOMBIE
+      - HUSK
+      - DROWNED
+      - SKELETON
+      - STRAY
+      - WITHER_SKELETON
+
+    worlds:
+      mode: WHITELIST
+      list:
+        - resource
+
+    item:
+      type: RPGITEM
+      id: nekomoon_broke
+
+    chance: 0.01
+
+    amount:
+      min: 1
+      max: 1
+
+  # 示例：原版物品掉落（默认禁用，需要时把 enabled 改为 true）
+  zombie_diamond_example:
+    enabled: false
+
+    entities:
+      - ZOMBIE
+
+    worlds:
+      mode: WHITELIST
+      list:
+        - resource
+
+    item:
+      type: VANILLA
+      material: DIAMOND
+
+    chance: 0.5
+
+    amount:
+      min: 1
+      max: 2
