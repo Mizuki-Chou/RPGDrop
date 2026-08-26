@@ -1,6 +1,8 @@
 package mizukichou.rpgdrop.drop;
 
 import org.bukkit.World;
+import mizukichou.rpgdrop.util.Amounts;
+import mizukichou.rpgdrop.util.Chance;
 import org.bukkit.entity.EntityType;
 
 import java.util.Collections;
@@ -15,6 +17,9 @@ import java.util.Set;
  * 概率单位：chance = 0.01 表示 0.01%（全项目统一，勿混淆为 1%）。
  */
 public final class DropRule {
+
+    /** 单条规则的世界数上限（模型层硬限制；超出部分在命令/GUI 层被拒绝）。 */
+    public static final int MAX_WORLDS_PER_RULE = 64;
 
     private final String id;
 
@@ -53,6 +58,9 @@ public final class DropRule {
     }
 
     public void addEntity(EntityType type) {
+        if (type == null) {
+            return; // 模型层防御：不接收 null
+        }
         entities.add(type);
     }
 
@@ -64,8 +72,13 @@ public final class DropRule {
         return Collections.unmodifiableSet(worlds);
     }
 
-    public void addWorld(String world) {
+    /** 添加世界；世界为空/超长/达到上限时拒绝（模型层最后一道防线）。 */
+    public boolean addWorld(String world) {
+        if (world == null || world.isBlank() || world.length() > 64 || worlds.size() >= MAX_WORLDS_PER_RULE) {
+            return false;
+        }
         worlds.add(world);
+        return true;
     }
 
     public void removeWorld(String world) {
@@ -77,6 +90,9 @@ public final class DropRule {
     }
 
     public void setWorldMode(WorldMode worldMode) {
+        if (worldMode == null) {
+            return; // 模型层防御
+        }
         this.worldMode = worldMode;
     }
 
@@ -95,6 +111,9 @@ public final class DropRule {
     }
 
     public void setChance(double chance) {
+        if (!Chance.isValid(chance)) {
+            return; // 模型层防御：非法值（NaN/Infinity/越界）直接忽略
+        }
         this.chance = chance;
     }
 
@@ -106,7 +125,10 @@ public final class DropRule {
         return maxAmount;
     }
 
-    public void setAmount(int min, int max) {
+        public void setAmount(int min, int max) {
+        if (!Amounts.isValid(min, max)) {
+            return; // 模型层防御：非法范围直接忽略
+        }
         this.minAmount = min;
         this.maxAmount = max;
     }

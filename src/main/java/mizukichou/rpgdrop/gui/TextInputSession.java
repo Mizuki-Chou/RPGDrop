@@ -36,6 +36,7 @@ public final class TextInputSession {
 
     private final BukkitTask timeoutTask;
     private boolean done;
+    private boolean cancelled;
 
     public TextInputSession(RPGDropPlugin plugin, GuiManager manager, Player player, I18n i18n,
                             String promptKey, Object[] promptArgs, Consumer<String> onConfirm, Runnable onCancel) {
@@ -53,6 +54,9 @@ public final class TextInputSession {
 
     /** 发出输入提示（需在主线程调用）。 */
     void open() {
+        if (cancelled) {
+            return; // 会话已被 reload/退出取消，不再打扰玩家（stale queued task 防护）
+        }
         Msg.send(player, "gui.input.prompt");
         Msg.send(player, promptKey, promptArgs);
         Msg.send(player, "gui.input.cancel_hint");
@@ -87,6 +91,7 @@ public final class TextInputSession {
     public void cancelQuietly() {
         if (!done) {
             done = true;
+            cancelled = true;
             timeoutTask.cancel();
             manager.finishChatInput(this);
         }

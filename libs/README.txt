@@ -1,12 +1,17 @@
-离线备选目录（默认不需要用到）
-================================
+本目录说明
+==========
 
-当前构建默认直接从 RPGItems 官方 Maven 仓库引用依赖：
-  cat.nyaa:rpgitems:3.38-SNAPSHOT
+RPGDrop 的所有可选插件集成都采用【纯反射】实现（编译期零依赖）：
 
-只有当你无法访问 https://ci.nyaacat.com/maven/ 时，才需要：
-  1. 把服务器 plugins/ 里的 RPGItems.jar 复制到这个目录
-  2. 在 build.gradle.kts 里注释掉 maven 依赖那行，
-     并取消 compileOnly(files("libs/RPGItems.jar")) 的注释
+- RPGItems：运行时反射调用，无需任何编译依赖
+- NekoNYume：运行时反射调用，无需任何编译依赖
 
-本目录下的 *.jar 已被 .gitignore 排除，不会上传 GitHub。
+因此构建 RPGDrop 不需要往本目录放任何 jar，直接执行 gradlew build 即可。
+
+本地测试服（runServer）要测试某个可选插件时，把它的 jar 放进
+项目的 test-plugins/ 目录（会被自动装进测试服）：
+
+- RPGItems.jar（另需 NyaaCore.jar、Vault.jar）
+- NekoNYume.jar
+
+此目录保留仅用于兼容历史说明，可留空。

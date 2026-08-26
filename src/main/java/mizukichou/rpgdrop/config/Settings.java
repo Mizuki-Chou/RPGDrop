@@ -6,7 +6,6 @@ package mizukichou.rpgdrop.config;
 public record Settings(
         boolean debug,
         boolean rpgItemsEnabled,
-        boolean keepVanillaDrops,
-        boolean cacheRpgItems
+        boolean keepVanillaDrops
 ) {
 }

@@ -4,6 +4,7 @@ import mizukichou.rpgdrop.command.SubCommand;
 import mizukichou.rpgdrop.command.TabUtil;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
+import mizukichou.rpgdrop.drop.NekoNYumeDropItem;
 import mizukichou.rpgdrop.drop.RPGItemDropItem;
 import mizukichou.rpgdrop.drop.VanillaDropItem;
 import mizukichou.rpgdrop.util.Msg;
@@ -56,6 +57,8 @@ public final class InfoCommand implements SubCommand {
             Msg.sendRaw(sender, "command.info_item_rpgitem", rpgItem.rpgItemId());
         } else if (rule.item() instanceof VanillaDropItem vanilla) {
             Msg.sendRaw(sender, "command.info_item_vanilla", vanilla.material());
+        } else if (rule.item() instanceof NekoNYumeDropItem nyn) {
+            Msg.sendRaw(sender, "command.info_item_nyn", nyn.kind() + ":" + nyn.value());
         } else {
             Msg.sendRaw(sender, "command.info_item_none");
         }

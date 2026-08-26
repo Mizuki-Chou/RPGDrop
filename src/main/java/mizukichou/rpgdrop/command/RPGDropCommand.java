@@ -11,11 +11,14 @@ import mizukichou.rpgdrop.command.sub.HelpCommand;
 import mizukichou.rpgdrop.command.sub.InfoCommand;
 import mizukichou.rpgdrop.command.sub.ItemCommand;
 import mizukichou.rpgdrop.command.sub.ListCommand;
+import mizukichou.rpgdrop.command.sub.LotteryCommand;
 import mizukichou.rpgdrop.command.sub.ReloadCommand;
 import mizukichou.rpgdrop.command.sub.WorldCommand;
 import mizukichou.rpgdrop.drop.DropManager;
+import mizukichou.rpgdrop.drop.LotteryManager;
 import mizukichou.rpgdrop.util.Log;
 import mizukichou.rpgdrop.util.Msg;
+import mizukichou.rpgdrop.util.Strings;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -37,7 +40,7 @@ public final class RPGDropCommand implements CommandExecutor, TabCompleter {
     private final Log log;
     private final Map<String, SubCommand> subCommands = new LinkedHashMap<>();
 
-    public RPGDropCommand(RPGDropPlugin plugin, DropManager dropManager, Log log) {
+    public RPGDropCommand(RPGDropPlugin plugin, DropManager dropManager, LotteryManager lotteryManager, Log log) {
         this.plugin = plugin;
         this.dropManager = dropManager;
         this.log = log;
@@ -53,7 +56,8 @@ public final class RPGDropCommand implements CommandExecutor, TabCompleter {
         register(new ChanceCommand(dropManager));
         register(new AmountCommand(dropManager));
         register(new ReloadCommand(plugin));
-        register(new GuiCommand(plugin, dropManager));
+        register(new LotteryCommand(plugin, lotteryManager));
+        register(new GuiCommand(plugin, dropManager, lotteryManager));
     }
 
     private void register(SubCommand sub) {
@@ -98,8 +102,9 @@ public final class RPGDropCommand implements CommandExecutor, TabCompleter {
 
         try {
             sub.execute(sender, rest);
-        } catch (Exception e) {
-            log.severe("Error while executing command /" + label + " " + String.join(" ", args), e);
+        } catch (Exception | LinkageError e) {
+            log.severe("Error while executing command /" + Strings.sanitizeLog(label)
+                    + " " + Strings.sanitizeLog(String.join(" ", args)), e);
             Msg.send(sender, "command.execution_error");
         }
         return true;

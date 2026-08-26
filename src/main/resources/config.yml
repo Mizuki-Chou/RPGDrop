@@ -16,6 +16,3 @@ settings:
     # false：清空原版掉落，只保留 RPGDrop 的掉落
     keep-vanilla-drops: true
 
-  performance:
-    # true：缓存 RPGItem ID -> ItemStack 工厂（只缓存工厂，不缓存 ItemStack 实例）
-    cache-rpgitems: true

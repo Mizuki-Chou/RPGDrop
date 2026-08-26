@@ -5,6 +5,7 @@ import mizukichou.rpgdrop.command.SubCommand;
 import mizukichou.rpgdrop.command.TabUtil;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
+import mizukichou.rpgdrop.drop.NekoNYumeDropItem;
 import mizukichou.rpgdrop.drop.RPGItemDropItem;
 import mizukichou.rpgdrop.drop.VanillaDropItem;
 import mizukichou.rpgdrop.util.Materials;
@@ -23,7 +24,7 @@ import java.util.Optional;
  */
 public final class ItemCommand implements SubCommand {
 
-    private static final List<String> KINDS = List.of("rpgitem", "vanilla");
+    private static final List<String> KINDS = List.of("rpgitem", "vanilla", "nyn");
     private static final List<String> MATERIALS =
             Arrays.stream(Material.values()).map(Enum::name).sorted().toList();
 
@@ -47,7 +48,7 @@ public final class ItemCommand implements SubCommand {
 
     @Override
     public String usage() {
-        return "/rdrop item <id> rpgitem <RPGItem ID> | vanilla <material>";
+        return "/rdrop item <id> vanilla <material> | rpgitem <RPGItem ID> | nyn <kind:value>";
     }
 
     @Override
@@ -89,6 +90,23 @@ public final class ItemCommand implements SubCommand {
                     Msg.send(sender, "command.item_rpgitem_missing", rpgId);
                 }
             }
+            case "nyn" -> {
+                if (args.length < 3) {
+                    Msg.send(sender, "command.item_usage_nyn", rule.id());
+                    return;
+                }
+                Optional<NekoNYumeDropItem> nyn = NekoNYumeDropItem.fromInput(args[2]);
+                if (nyn.isEmpty()) {
+                    Msg.send(sender, "command.item_nyn_invalid", args[2]);
+                    return;
+                }
+                rule.setItem(nyn.get());
+                dropManager.ruleUpdated(rule);
+                Msg.send(sender, "command.item_set_nyn", rule.id(), nyn.get().kind() + ":" + nyn.get().value());
+                if (!plugin.isNekoNYumeAvailable()) {
+                    Msg.send(sender, "command.item_nyn_unavailable");
+                }
+            }
             case "vanilla" -> {
                 if (args.length < 3) {
                     Msg.send(sender, "command.item_usage_vanilla", rule.id());
@@ -113,13 +131,16 @@ public final class ItemCommand implements SubCommand {
             return TabUtil.filter(TabUtil.ruleIds(dropManager), args[0]);
         }
         if (args.length == 2) {
-            return TabUtil.filter(KINDS, args[1]);
+            return TabUtil.filter(TabUtil.itemKinds(plugin), args[1]);
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("rpgitem")) {
             return TabUtil.filter(plugin.getRpgItemIds(), args[2]);
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("vanilla")) {
             return TabUtil.filter(MATERIALS, args[2]);
+        }
+        if (args.length == 3 && args[1].equalsIgnoreCase("nyn")) {
+            return TabUtil.filter(List.of("meowdan:", "xppill:", "equipment:", "equipbag"), args[2]);
         }
         return List.of();
     }

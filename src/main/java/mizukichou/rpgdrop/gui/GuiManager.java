@@ -12,10 +12,11 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -35,14 +36,22 @@ public final class GuiManager implements Listener {
     /** 打开中的页面（按 Holder 身份路由）。 */
     private final Map<InventoryHolder, Gui> route = new IdentityHashMap<>();
 
+    /** 代次：每次 invalidateAll（重载）自增；页面持有创建时的代次，用于作废重载前的排队导航任务。 */
+    private long generation = 0;
+
     /** 等待聊天输入的会话（每玩家至多一个）。 */
-    private final Map<Player, TextInputSession> chatInputs = new HashMap<>();
+    private final Map<Player, TextInputSession> chatInputs = new ConcurrentHashMap<>();
 
     public GuiManager(RPGDropPlugin plugin) {
         this.plugin = plugin;
     }
 
     /** 打开一个 GUI 页面（会取消该玩家未完成的聊天输入）。 */
+    /** 当前代次。 */
+    public long generation() {
+        return generation;
+    }
+
     public void open(Player player, Gui gui) {
         cancelPendingChatInput(player);
         route.put(gui, gui);
@@ -98,9 +107,16 @@ public final class GuiManager implements Listener {
         chatInputs.clear();
         for (Gui gui : new ArrayList<>(route.values())) {
             if (gui.viewer.isOnline()) {
-                plugin.getServer().getScheduler().runTask(plugin, () -> gui.viewer.closeInventory());
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    // 只关闭"仍停留在该页面"的玩家，避免误关之后新打开的页面（stale task）
+                    InventoryView view = gui.viewer.getOpenInventory();
+                    if (view != null && view.getTopInventory() != null && view.getTopInventory().getHolder() == gui) {
+                        gui.viewer.closeInventory();
+                    }
+                });
             }
         }
+        generation++; // 重载即换代：所有旧页面/旧导航任务作废
         route.clear();
     }
 
@@ -110,6 +126,9 @@ public final class GuiManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onClick(InventoryClickEvent event) {
+        if (event.getView() == null || event.getView().getTopInventory() == null) {
+            return;
+        }
         Gui gui = route.get(event.getView().getTopInventory().getHolder());
         if (gui != null) {
             gui.click(event);
@@ -118,6 +137,9 @@ public final class GuiManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
+        if (event.getView() == null || event.getView().getTopInventory() == null) {
+            return;
+        }
         Gui gui = route.get(event.getView().getTopInventory().getHolder());
         if (gui != null) {
             gui.drag(event);
@@ -126,6 +148,9 @@ public final class GuiManager implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onClose(InventoryCloseEvent event) {
+        if (event.getView() == null || event.getView().getTopInventory() == null) {
+            return;
+        }
         Gui removed = route.remove(event.getView().getTopInventory().getHolder());
         if (removed != null) {
             removed.onClose();

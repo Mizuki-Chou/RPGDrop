@@ -1,9 +1,6 @@
 package mizukichou.rpgdrop.gui.page;
 
 import mizukichou.rpgdrop.RPGDropPlugin;
-import mizukichou.rpgdrop.drop.DropManager;
-import mizukichou.rpgdrop.drop.DropRule;
-import mizukichou.rpgdrop.drop.VanillaDropItem;
 import mizukichou.rpgdrop.gui.Gui;
 import mizukichou.rpgdrop.gui.GuiManager;
 import mizukichou.rpgdrop.util.Items;
@@ -13,14 +10,16 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.LinkedHashMap;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
- * 原版物品选择页：分类页 + 分类物品网格（分页）+ 搜索。
- * 分类名通过语言文件键 gui.material.cat.&lt;id&gt; 翻译，材料名保持英文（与命令参数一致）。
+ * 原版物品选择页（通用版，Release 2 起供掉落规则与抽奖规则共用）：
+ * 分类页 + 分类物品网格（分页）+ 搜索。选择结果通过回调返回。
+ * 分类名通过语言键 gui.material.cat.&lt;id&gt; 翻译，材料名保持英文（与命令参数一致）。
  */
 public final class MaterialPickerGui extends Gui {
 
@@ -67,20 +66,24 @@ public final class MaterialPickerGui extends Gui {
         CATEGORIES = Collections.unmodifiableMap(categories);
     }
 
-    private final DropManager dropManager;
-    private final DropRule rule;
-    private String category; // null = category selection page
+    private final String titleArg;
+    private final Consumer<Material> onPick;
+    private final Runnable onBack;
+    private String category; // null = 分类选择页
     private int page;
 
-    public MaterialPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public MaterialPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer,
+                             String titleArg, Consumer<Material> onPick, Runnable onBack) {
         super(plugin, manager, viewer);
-        this.dropManager = dropManager;
-        this.rule = rule;
+        this.titleArg = titleArg;
+        this.onPick = onPick;
+        this.onBack = onBack;
     }
 
     private MaterialPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer,
-                              DropManager dropManager, DropRule rule, String category, int page) {
-        this(plugin, manager, viewer, dropManager, rule);
+                              String titleArg, Consumer<Material> onPick, Runnable onBack,
+                              String category, int page) {
+        this(plugin, manager, viewer, titleArg, onPick, onBack);
         this.category = category;
         this.page = page;
     }
@@ -101,14 +104,14 @@ public final class MaterialPickerGui extends Gui {
             button(slot++, Items.icon(representative, "&a" + t("gui.material.cat." + entry.getKey()),
                             t("gui.material.count", entry.getValue().size()),
                             t("gui.material.click_enter")),
-                    () -> navigate(new MaterialPickerGui(plugin, manager, viewer, dropManager, rule, entry.getKey(), 0)));
+                    () -> navigate(new MaterialPickerGui(plugin, manager, viewer,
+                            titleArg, onPick, onBack, entry.getKey(), 0)));
         }
         button(22, Items.icon(Material.OAK_SIGN, t("gui.material.search"), t("gui.material.search_lore")), () ->
                 manager.requestTextInput(viewer, "gui.material.search_prompt",
                         this::onSearch,
-                        () -> navigate(new MaterialPickerGui(plugin, manager, viewer, dropManager, rule))));
-        button(26, Items.icon(Material.ARROW, t("back")),
-                () -> navigate(new ItemPickerGui(plugin, manager, viewer, dropManager, rule)));
+                        () -> navigate(new MaterialPickerGui(plugin, manager, viewer, titleArg, onPick, onBack))));
+        button(26, Items.icon(Material.ARROW, t("back")), onBack::run);
     }
 
     private void fillCategory() {
@@ -123,7 +126,7 @@ public final class MaterialPickerGui extends Gui {
         for (int i = from; i < to; i++) {
             Material material = materials.get(i);
             int slot = i - from;
-            button(slot, new ItemStack(material), () -> onPick(material));
+            button(slot, new ItemStack(material), () -> onPick.accept(material));
         }
 
         if (page > 0) {
@@ -139,26 +142,19 @@ public final class MaterialPickerGui extends Gui {
             });
         }
         button(48, Items.icon(Material.ARROW, t("gui.material.back_categories")),
-                () -> navigate(new MaterialPickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new MaterialPickerGui(plugin, manager, viewer, titleArg, onPick, onBack)));
         icon(49, Items.icon(Material.BOOK, t("gui.material.category", t("gui.material.cat." + category)),
                 t("gui.material.category_total", materials.size())));
-    }
-
-    private void onPick(Material material) {
-        rule.setItem(new VanillaDropItem(material));
-        dropManager.ruleUpdated(rule);
-        Msg.send(viewer, "gui.material.set", rule.id(), material);
-        navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule));
     }
 
     private void onSearch(String raw) {
         var material = Materials.parse(raw);
         if (material.isEmpty()) {
             Msg.send(viewer, "gui.material.unknown", raw);
-            navigate(new MaterialPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new MaterialPickerGui(plugin, manager, viewer, titleArg, onPick, onBack));
             return;
         }
-        onPick(material.get());
+        onPick.accept(material.get());
     }
 
     @Override
@@ -169,8 +165,8 @@ public final class MaterialPickerGui extends Gui {
     @Override
     protected String title() {
         return category == null
-                ? t(titleKey(), rule.id())
-                : t(titleKey(), t("gui.material.cat." + category), rule.id());
+                ? t(titleKey(), titleArg)
+                : t(titleKey(), t("gui.material.cat." + category), titleArg);
     }
 
     @Override

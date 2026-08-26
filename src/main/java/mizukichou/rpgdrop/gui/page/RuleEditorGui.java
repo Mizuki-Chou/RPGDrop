@@ -3,6 +3,8 @@ package mizukichou.rpgdrop.gui.page;
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
+import mizukichou.rpgdrop.drop.LotteryManager;
+import mizukichou.rpgdrop.drop.NekoNYumeDropItem;
 import mizukichou.rpgdrop.drop.RPGItemDropItem;
 import mizukichou.rpgdrop.drop.VanillaDropItem;
 import mizukichou.rpgdrop.gui.Gui;
@@ -16,18 +18,21 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Optional;
 
 /**
- * 规则编辑页：生物 / 世界 / 掉落物 / 概率 / 数量 / 启用 / 删除 / 返回。
+ * 掉落规则编辑页：生物 / 世界 / 掉落物 / 概率 / 数量 / 启用 / 删除 / 返回。
  *
  * 掉落物按钮会通过 RPGItems API 实时预览真实物品（改动自动生效）。
  */
 public final class RuleEditorGui extends Gui {
 
     private final DropManager dropManager;
+    private final LotteryManager lotteryManager;
     private final DropRule rule;
 
-    public RuleEditorGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public RuleEditorGui(RPGDropPlugin plugin, GuiManager manager, Player viewer,
+                         DropManager dropManager, LotteryManager lotteryManager, DropRule rule) {
         super(plugin, manager, viewer);
         this.dropManager = dropManager;
+        this.lotteryManager = lotteryManager;
         this.rule = rule;
     }
 
@@ -56,7 +61,7 @@ public final class RuleEditorGui extends Gui {
                                 : "&f" + String.join(", ", rule.entities().stream().map(Enum::name).sorted().toList())),
                         "",
                         t("gui.editor.click_edit")),
-                () -> navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
 
         button(11, Items.icon(Material.GRASS_BLOCK, t("gui.editor.world"),
                         t("gui.editor.world_current", rule.worlds().isEmpty()
@@ -64,22 +69,37 @@ public final class RuleEditorGui extends Gui {
                                 : "&f" + String.join(", ", rule.worlds().stream().sorted().toList())),
                         "",
                         t("gui.editor.click_edit")),
-                () -> navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
 
-        button(12, dropItemIcon(), () -> navigate(new ItemPickerGui(plugin, manager, viewer, dropManager, rule)));
+        button(12, dropItemIcon(), () -> navigate(new ItemPickerGui(plugin, manager, viewer,
+                dropManager, lotteryManager, "gui.item.title", rule.id(),
+                item -> {
+                    rule.setItem(item);
+                    dropManager.ruleUpdated(rule);
+                    if (item == null) {
+                        Msg.send(viewer, "gui.item.cleared");
+                    } else if (item instanceof RPGItemDropItem rpgItem) {
+                        Msg.send(viewer, "gui.item.set_rpgitem", rule.id(), rpgItem.rpgItemId());
+                        plugin.notifyRpgItemMissing(viewer, rpgItem.rpgItemId());
+                    } else if (item instanceof VanillaDropItem vanilla) {
+                        Msg.send(viewer, "gui.material.set", rule.id(), vanilla.material());
+                    }
+                    navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
+                },
+                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)))));
 
         button(13, Items.icon(Material.GOLD_NUGGET, t("gui.editor.chance"),
                         t("gui.editor.chance_current", rule.chance()),
                         t("gui.editor.chance_note"),
                         "",
                         t("gui.editor.click_edit")),
-                () -> navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
 
         button(14, Items.icon(Material.PAPER, t("gui.editor.amount"),
                         t("gui.editor.amount_current", rule.minAmount(), rule.maxAmount()),
                         "",
                         t("gui.editor.click_edit")),
-                () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
 
         button(15, Items.icon(rule.isEnabled() ? Material.LIME_DYE : Material.RED_DYE,
                         (rule.isEnabled() ? "&a" : "&c") + t("gui.editor.toggle", ""),
@@ -96,12 +116,12 @@ public final class RuleEditorGui extends Gui {
                         () -> {
                             dropManager.deleteRule(rule.id());
                             Msg.send(viewer, "command.rule_deleted", rule.id());
-                            navigate(new MainMenuGui(plugin, manager, viewer, dropManager));
+                            navigate(new DropListGui(plugin, manager, viewer, dropManager, lotteryManager));
                         },
-                        () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule)))));
+                        () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)))));
 
         button(17, Items.icon(Material.ARROW, t("back"), t("gui.editor.back_lore")),
-                () -> navigate(new MainMenuGui(plugin, manager, viewer, dropManager)));
+                () -> navigate(new DropListGui(plugin, manager, viewer, dropManager, lotteryManager)));
     }
 
     /**
@@ -121,6 +141,14 @@ public final class RuleEditorGui extends Gui {
                     t("gui.editor.drop_preview_fail"),
                     "",
                     t("gui.editor.drop_click_edit"));
+        }
+        if (rule.item() instanceof NekoNYumeDropItem nyn) {
+            return plugin.nekoNYumeHook().createItemStack(nyn)
+                    .orElse(Items.icon(Material.GOLD_NUGGET, t("gui.editor.drop"),
+                            t("gui.editor.drop_current", nyn.kind() + ":" + nyn.value()),
+                            t("gui.editor.drop_preview_fail"),
+                            "",
+                            t("gui.editor.drop_click_edit")));
         }
         if (rule.item() instanceof VanillaDropItem vanilla) {
             return new ItemStack(vanilla.material());

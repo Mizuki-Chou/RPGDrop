@@ -24,10 +24,11 @@ public final class Materials {
             return Optional.empty();
         }
         try {
-            String input = raw.trim();
+            // 统一转小写：带命名空间的写法（minecraft:DIAMOND）也应与无命名空间写法一样大小写不敏感
+            String input = raw.trim().toLowerCase(Locale.ROOT);
             NamespacedKey key = input.indexOf(':') >= 0
                     ? NamespacedKey.fromString(input)
-                    : NamespacedKey.minecraft(input.toLowerCase(Locale.ROOT));
+                    : NamespacedKey.minecraft(input);
             if (key == null) {
                 return Optional.empty();
             }

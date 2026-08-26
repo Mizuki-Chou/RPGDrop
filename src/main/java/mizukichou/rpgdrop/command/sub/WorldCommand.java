@@ -5,6 +5,7 @@ import mizukichou.rpgdrop.command.TabUtil;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.util.Msg;
+import mizukichou.rpgdrop.util.Strings;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -76,11 +77,18 @@ public final class WorldCommand implements SubCommand {
                 boolean add = op.equals("add");
                 for (int i = 2; i < args.length; i++) {
                     String input = args[i];
+                    if (input.length() > Strings.MAX_WORLD_NAME) {
+                        Msg.send(sender, "command.world_too_long", input.substring(0, 32));
+                        continue;
+                    }
                     // 已加载的世界按真实名（大小写）归一，避免大小写写错导致永远匹配不上
                     World loaded = Bukkit.getWorld(input);
                     String world = loaded != null ? loaded.getName() : input;
                     if (add) {
-                        rule.addWorld(world);
+                        if (!rule.addWorld(world)) {
+                            Msg.send(sender, "command.world_limit", DropRule.MAX_WORLDS_PER_RULE);
+                            continue;
+                        }
                         if (loaded == null) {
                             Msg.send(sender, "command.world_not_loaded", world);
                         }

@@ -3,6 +3,7 @@ package mizukichou.rpgdrop.command.sub;
 import mizukichou.rpgdrop.command.SubCommand;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
+import mizukichou.rpgdrop.drop.NekoNYumeDropItem;
 import mizukichou.rpgdrop.drop.RPGItemDropItem;
 import mizukichou.rpgdrop.drop.VanillaDropItem;
 import mizukichou.rpgdrop.util.Msg;
@@ -58,6 +59,9 @@ public final class ListCommand implements SubCommand {
         }
         if (rule.item() instanceof VanillaDropItem vanilla) {
             return "&fVANILLA(" + vanilla.material() + ")";
+        }
+        if (rule.item() instanceof NekoNYumeDropItem nyn) {
+            return "&fNYN(" + nyn.kind() + ":" + nyn.value() + ")";
         }
         return "&c" + Msg.tr(sender, "not_set");
     }

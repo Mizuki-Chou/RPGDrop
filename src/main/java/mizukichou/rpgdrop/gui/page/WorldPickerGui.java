@@ -2,11 +2,13 @@ package mizukichou.rpgdrop.gui.page;
 
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
+import mizukichou.rpgdrop.drop.LotteryManager;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.gui.Gui;
 import mizukichou.rpgdrop.gui.GuiManager;
 import mizukichou.rpgdrop.util.Items;
 import mizukichou.rpgdrop.util.Msg;
+import mizukichou.rpgdrop.util.Strings;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -22,11 +24,13 @@ import java.util.List;
 public final class WorldPickerGui extends Gui {
 
     private final DropManager dropManager;
+    private final LotteryManager lotteryManager;
     private final DropRule rule;
 
-    public WorldPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public WorldPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, LotteryManager lotteryManager, DropRule rule) {
         super(plugin, manager, viewer);
         this.dropManager = dropManager;
+        this.lotteryManager = lotteryManager;
         this.rule = rule;
     }
 
@@ -81,16 +85,20 @@ public final class WorldPickerGui extends Gui {
         button(47, Items.icon(Material.OAK_SIGN, t("gui.world.add"), t("gui.world.add_lore")), () ->
                 manager.requestTextInput(viewer, "gui.world.add_prompt",
                         this::onAdd,
-                        () -> navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, rule))));
+                        () -> navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule))));
         button(48, Items.icon(Material.ARROW, t("back")),
-                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
     }
 
     private void toggle(String name) {
         if (rule.worlds().contains(name)) {
             rule.removeWorld(name);
         } else {
-            rule.addWorld(name);
+            if (!rule.addWorld(name)) {
+                Msg.send(viewer, "command.world_limit", DropRule.MAX_WORLDS_PER_RULE);
+                render(); // 刷新重新挂载按钮（动作已一次性消费，否则该格子会永久失效）
+                return;
+            }
         }
         dropManager.ruleUpdated(rule);
         render();
@@ -100,20 +108,29 @@ public final class WorldPickerGui extends Gui {
         String input = raw.trim();
         if (input.isEmpty()) {
             Msg.send(viewer, "gui.world.name_empty");
-            navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
+            return;
+        }
+        if (input.length() > Strings.MAX_WORLD_NAME) {
+            Msg.send(viewer, "command.world_too_long", input.substring(0, 32));
+            navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         // 已加载的世界按真实名（大小写）归一
         World loaded = Bukkit.getWorld(input);
         String name = loaded != null ? loaded.getName() : input;
-        rule.addWorld(name);
+        if (!rule.addWorld(name)) {
+            Msg.send(viewer, "command.world_limit", DropRule.MAX_WORLDS_PER_RULE);
+            navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
+            return;
+        }
         dropManager.ruleUpdated(rule);
         if (Bukkit.getWorld(name) == null) {
             Msg.send(viewer, "gui.world.not_loaded", name);
         } else {
             Msg.send(viewer, "gui.world.added", name);
         }
-        navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, rule));
+        navigate(new WorldPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
     }
 
     @Override

@@ -1,6 +1,7 @@
 package mizukichou.rpgdrop.config;
 
 import mizukichou.rpgdrop.drop.DropItem;
+import mizukichou.rpgdrop.drop.NekoNYumeDropItem;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.drop.ItemType;
 import mizukichou.rpgdrop.drop.RPGItemDropItem;
@@ -30,9 +31,15 @@ public final class DropRuleSerializer {
     public static DropRule parse(String id, ConfigurationSection s) throws ConfigException {
         DropRule rule = new DropRule(id);
 
+        if (s.isSet("enabled") && !s.isBoolean("enabled")) {
+            throw new ConfigException("'enabled' must be a boolean (true/false)");
+        }
         rule.setEnabled(s.getBoolean("enabled", true));
 
         // ---- entities ----
+        if (s.isSet("entities") && !s.isList("entities")) {
+            throw new ConfigException("'entities' must be a list (e.g. entities: [ZOMBIE])");
+        }
         for (String raw : s.getStringList("entities")) {
             String name = raw.trim().toUpperCase(Locale.ROOT);
             try {
@@ -54,10 +61,18 @@ public final class DropRuleSerializer {
             throw new ConfigException("Unknown world mode '" + modeRaw + "' (only WHITELIST is supported)");
         }
         if (worldSection != null) {
+            if (worldSection.isSet("list") && !worldSection.isList("list")) {
+                throw new ConfigException("worlds.list must be a list (e.g. list: [resource])");
+            }
+            int worldCount = 0;
             for (String world : worldSection.getStringList("list")) {
-                if (!world.isBlank()) {
-                    rule.addWorld(world);
+                if (world.isBlank()) {
+                    continue;
                 }
+                if (++worldCount > DropRule.MAX_WORLDS_PER_RULE) {
+                    throw new ConfigException("Too many worlds (limit " + DropRule.MAX_WORLDS_PER_RULE + " per rule)");
+                }
+                rule.addWorld(world);
             }
         }
 
@@ -99,7 +114,7 @@ public final class DropRuleSerializer {
     private static DropItem parseItem(ConfigurationSection itemSection) throws ConfigException {
         String typeRaw = itemSection.getString("type");
         ItemType type = ItemType.parse(typeRaw)
-                .orElseThrow(() -> new ConfigException("Unknown item type '" + typeRaw + "' (supported: VANILLA / RPGITEM)"));
+                .orElseThrow(() -> new ConfigException("Unknown item type '" + typeRaw + "' (supported: VANILLA / RPGITEM / NEKONYUME)"));
 
         return switch (type) {
             case VANILLA -> {
@@ -114,6 +129,14 @@ public final class DropRuleSerializer {
                     throw new ConfigException("RPGITEM type requires an id");
                 }
                 yield new RPGItemDropItem(rpgId);
+            }
+            case NEKONYUME -> {
+                String kind = itemSection.getString("nyn_kind");
+                String value = itemSection.getString("nyn_id", "");
+                if (kind == null || !NekoNYumeDropItem.KINDS.contains(kind.toLowerCase(Locale.ROOT))) {
+                    throw new ConfigException("Unknown NekoNYume kind '" + kind + "' (meowdan/xppill/equipment/equipbag)");
+                }
+                yield new NekoNYumeDropItem(kind, value);
             }
         };
     }
@@ -131,6 +154,10 @@ public final class DropRuleSerializer {
         } else if (rule.item() instanceof RPGItemDropItem rpgItem) {
             s.set("item.type", ItemType.RPGITEM.name());
             s.set("item.id", rpgItem.rpgItemId());
+        } else if (rule.item() instanceof NekoNYumeDropItem nyn) {
+            s.set("item.type", ItemType.NEKONYUME.name());
+            s.set("item.nyn_kind", nyn.kind());
+            s.set("item.nyn_id", nyn.value());
         }
 
         s.set("chance", rule.chance());

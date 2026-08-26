@@ -2,6 +2,7 @@ package mizukichou.rpgdrop.gui.page;
 
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
+import mizukichou.rpgdrop.drop.LotteryManager;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.gui.Gui;
 import mizukichou.rpgdrop.gui.GuiManager;
@@ -17,11 +18,13 @@ import org.bukkit.entity.Player;
 public final class AmountPickerGui extends Gui {
 
     private final DropManager dropManager;
+    private final LotteryManager lotteryManager;
     private final DropRule rule;
 
-    public AmountPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public AmountPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, LotteryManager lotteryManager, DropRule rule) {
         super(plugin, manager, viewer);
         this.dropManager = dropManager;
+        this.lotteryManager = lotteryManager;
         this.rule = rule;
     }
 
@@ -62,10 +65,10 @@ public final class AmountPickerGui extends Gui {
         button(34, Items.icon(Material.OAK_SIGN, t("gui.amount.custom"), t("gui.amount.custom_lore")), () ->
                 manager.requestTextInput(viewer, "gui.amount.prompt_min",
                         this::onCustomMin,
-                        () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule))));
+                        () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule))));
 
         button(35, Items.icon(Material.ARROW, t("back")),
-                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
     }
 
     private void adjustMin(int delta) {
@@ -90,18 +93,18 @@ public final class AmountPickerGui extends Gui {
             min = Integer.parseInt(raw.trim());
         } catch (NumberFormatException e) {
             Msg.send(viewer, "gui.amount.not_int", raw);
-            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
-        if (min < 1) {
+        if (min < 1 || min > Amounts.MAX_AMOUNT) {
             Msg.send(viewer, "gui.amount.min_invalid");
-            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         // min 合法（>=1），后续 max 校验交给 Amounts.isValid
         manager.requestTextInput(viewer, "gui.amount.prompt_max", min,
                 maxRaw -> onCustomMax(min, maxRaw),
-                () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
     }
 
     private void onCustomMax(int min, String raw) {
@@ -110,17 +113,17 @@ public final class AmountPickerGui extends Gui {
             max = Integer.parseInt(raw.trim());
         } catch (NumberFormatException e) {
             Msg.send(viewer, "gui.amount.not_int", raw);
-            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         if (!Amounts.isValid(min, max)) {
             Msg.send(viewer, "gui.amount.max_invalid", min);
-            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new AmountPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         onSet(min, max);
         Msg.send(viewer, "gui.amount.set", min, max);
-        navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule));
+        navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
     }
 
     @Override

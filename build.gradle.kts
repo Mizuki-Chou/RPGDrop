@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "mizukichou"
-version = "Release 1"
+version = "Release 2"
 
 // ============================================================
 //  服务器版本（需要与目标服务器匹配）
@@ -22,14 +22,18 @@ val paperVersion = "26.2.build.116-stable"
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
-    // RPGItems Reloaded 官方 Maven 仓库
-    maven("https://ci.nyaacat.com/maven/")
 }
 
 java {
     toolchain {
         // 用 Java 25 开发（Paper 26.2 服务器本身要求 Java 25 运行时）
         languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+sourceSets {
+    test {
+        java.srcDir("src/test/java")
     }
 }
 
@@ -41,14 +45,19 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperVersion")
 
-    // RPGItems Reloaded 3.38：官方 Maven 仓库直接引用（推荐，Gradle 会自动下载，无需手动放 jar）
-    compileOnly("cat.nyaa:rpgitems:3.38-SNAPSHOT")
+    // 回归测试（RegressionTest）编译所需
+    testImplementation("io.papermc.paper:paper-api:$paperVersion")
 
-    // 离线备选方案（NyaaCat 仓库无法访问时使用）：
-    //   1. 注释掉上面那行 maven 依赖
-    //   2. 把服务器 plugins/ 里的 RPGItems.jar 复制到 libs/ 目录
-    //   3. 取消下面这行注释：
-    // compileOnly(files("libs/RPGItems.jar"))
+}
+
+// ---- 回归/随机化测试（纯 JVM，无需服务器）----
+// 运行：gradlew regressionTest
+tasks.register<JavaExec>("regressionTest") {
+    group = "verification"
+    description = "Runs the regression / randomized test suite (no server required)."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass = "mizukichou.rpgdrop.RegressionTest"
 }
 
 tasks.processResources {
@@ -57,8 +66,13 @@ tasks.processResources {
     }
 }
 
+// 回归测试接入标准构建链：gradlew build 会自动运行随机化回归测试
+tasks.named("check") {
+    dependsOn("regressionTest")
+}
+
 tasks.jar {
-    archiveFileName = "RPGDrop-Release-1.jar"
+    archiveFileName = "RPGDrop-Release-2.jar"
 }
 
 // ============================================================
@@ -74,7 +88,7 @@ tasks.jar {
 
 // 自动生成本地测试服的 eula.txt。
 // 仅用于本地开发测试，运行 runServer 即代表你同意 Mojang EULA。
-val agreeEula by tasks.registering {
+val agreeEula = tasks.register("agreeEula") {
     group = "run server"
     description = "生成本地测试服的 eula.txt"
     doLast {
@@ -99,6 +113,10 @@ tasks.runServer {
     // 测试服的 Minecraft 版本。首次运行自动下载对应 Paper。
     // 若新版版本号解析异常，可临时改为 minecraftVersion("1.21.8") 或 serverJar(本地 paper jar)
     minecraftVersion("26.2")
+
+    // 规避 Microsoft OpenJDK 25.0.4 的 G1 内部崩溃（g1HeapRegionManager.cpp 断言）。
+    // 升级到更新的 JDK 25 补丁版或换用 Temurin/Oracle 发行版后可删除本行。
+    jvmArguments = listOf("-XX:+UseParallelGC")
     runDirectory(file("run"))
     dependsOn(agreeEula)
 

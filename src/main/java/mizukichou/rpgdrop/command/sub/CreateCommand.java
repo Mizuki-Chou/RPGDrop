@@ -1,14 +1,15 @@
 package mizukichou.rpgdrop.command.sub;
 
 import mizukichou.rpgdrop.command.SubCommand;
+import mizukichou.rpgdrop.config.ConfigManager;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.util.Msg;
+import mizukichou.rpgdrop.util.RuleIds;
 import org.bukkit.command.CommandSender;
 
 public final class CreateCommand implements SubCommand {
 
-    private static final String ID_PATTERN = "[A-Za-z0-9_-]{1,32}";
-
+    
     private final DropManager dropManager;
 
     public CreateCommand(DropManager dropManager) {
@@ -38,8 +39,12 @@ public final class CreateCommand implements SubCommand {
     @Override
     public void execute(CommandSender sender, String[] args) {
         String id = args[0];
-        if (!id.matches(ID_PATTERN)) {
+        if (!RuleIds.isValid(id)) {
             Msg.send(sender, "command.invalid_id");
+            return;
+        }
+        if (dropManager.isLimitReached()) {
+            Msg.send(sender, "command.rule_limit", ConfigManager.MAX_DROP_RULES);
             return;
         }
         if (dropManager.getRule(id) != null) {

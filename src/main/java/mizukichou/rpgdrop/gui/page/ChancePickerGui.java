@@ -2,6 +2,7 @@ package mizukichou.rpgdrop.gui.page;
 
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
+import mizukichou.rpgdrop.drop.LotteryManager;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.gui.Gui;
 import mizukichou.rpgdrop.gui.GuiManager;
@@ -21,11 +22,13 @@ public final class ChancePickerGui extends Gui {
     private static final List<Double> PRESETS = List.of(100.0, 50.0, 10.0, 5.0, 1.0, 0.5, 0.1, 0.05, 0.01, 0.0);
 
     private final DropManager dropManager;
+    private final LotteryManager lotteryManager;
     private final DropRule rule;
 
-    public ChancePickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public ChancePickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, LotteryManager lotteryManager, DropRule rule) {
         super(plugin, manager, viewer);
         this.dropManager = dropManager;
+        this.lotteryManager = lotteryManager;
         this.rule = rule;
     }
 
@@ -46,19 +49,19 @@ public final class ChancePickerGui extends Gui {
             button(slot++, icon, () -> onSet(preset));
         }
 
-        button(16, Items.icon(Material.OAK_SIGN, t("gui.chance.custom"), t("gui.chance.custom_lore")), () ->
+        button(20, Items.icon(Material.OAK_SIGN, t("gui.chance.custom"), t("gui.chance.custom_lore")), () ->
                 manager.requestTextInput(viewer, "gui.chance.custom_prompt",
                         this::onCustom,
-                        () -> navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, rule))));
-        button(17, Items.icon(Material.ARROW, t("back")),
-                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule)));
+                        () -> navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule))));
+        button(22, Items.icon(Material.ARROW, t("back")),
+                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
     }
 
     private void onSet(double value) {
         rule.setChance(value);
         dropManager.ruleUpdated(rule);
         Msg.send(viewer, "gui.chance.set", value);
-        navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule));
+        navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
     }
 
     private void onCustom(String raw) {
@@ -67,12 +70,12 @@ public final class ChancePickerGui extends Gui {
             value = Double.parseDouble(raw.trim());
         } catch (NumberFormatException e) {
             Msg.send(viewer, "gui.chance.not_number", raw);
-            navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         if (!Chance.isValid(value)) {
             Msg.send(viewer, "gui.chance.range");
-            navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, rule));
+            navigate(new ChancePickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
             return;
         }
         onSet(value);

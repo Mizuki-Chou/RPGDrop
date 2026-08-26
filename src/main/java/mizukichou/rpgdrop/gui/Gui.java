@@ -1,5 +1,4 @@
 package mizukichou.rpgdrop.gui;
-
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.util.Msg;
 import net.kyori.adventure.text.Component;
@@ -9,6 +8,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -33,9 +33,13 @@ public abstract class Gui implements InventoryHolder {
     protected final Player viewer;
 
     private final Map<Integer, Runnable> actions = new HashMap<>();
+
+    /** 页面创建时的代次：reload（invalidateAll）换代后，本页面的排队导航任务作废。 */
+    private final long generation;
     private Inventory inventory;
 
     protected Gui(RPGDropPlugin plugin, GuiManager manager, Player viewer) {
+        this.generation = manager.generation();
         this.plugin = plugin;
         this.manager = manager;
         this.viewer = viewer;
@@ -77,12 +81,19 @@ public abstract class Gui implements InventoryHolder {
 
     /** 放置可点击按钮。 */
     protected final void button(int slot, ItemStack icon, Runnable action) {
+        if (slot < 0 || slot >= size()) {
+            plugin.getLogger().warning("Button slot " + slot + " out of range in " + getClass().getSimpleName());
+            return;
+        }
         inventory.setItem(slot, icon);
         actions.put(slot, action);
     }
 
     /** 放置纯展示图标（不可点击）。 */
     protected final void icon(int slot, ItemStack item) {
+        if (slot < 0 || slot >= size()) {
+            return;
+        }
         inventory.setItem(slot, item);
     }
 
@@ -92,9 +103,19 @@ public abstract class Gui implements InventoryHolder {
      */
     protected final void navigate(Gui next) {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
-            if (viewer.isOnline()) {
-                manager.open(viewer, next);
+            // stale 防护（跨页回调安全版）：页面被重载/关闭后会从 route 移除。
+            // 注意不能要求 holder == this——navigate 常由"发起页"的字段回调触发，
+            // 而玩家此刻停留在子页面（如点选页），发起页与当前页并非同一实例。
+            if (!viewer.isOnline()) {
+                return;
             }
+            // stale 防护（代次机制）：仅 reload（invalidateAll）换代后作废排队任务。
+            // 不做"玩家当前页面"检查——聊天输入流程中页面已主动关闭、玩家在聊天界面，
+            // 输入完成后的回调导航必须仍能打开新页面。
+            if (generation != manager.generation()) {
+                return;
+            }
+            manager.open(viewer, next);
         });
     }
 
@@ -110,13 +131,21 @@ public abstract class Gui implements InventoryHolder {
     /** 点击处理：一律 cancel，仅执行按钮动作；动作异常时兜底，不让异常击穿事件处理。 */
     public final void click(InventoryClickEvent event) {
         event.setCancelled(true);
+        // 权限在执行修改时重查：进入 GUI 后权限被撤销（如 LuckPerms）的玩家不能再操作
+        if (!viewer.hasPermission("rpgdrop.gui")) {
+            close();
+            return;
+        }
         Runnable action = actions.get(event.getRawSlot());
         if (action == null) {
             return;
         }
+        // 动作一次性消费：navigate 是下一 tick 才跳转，消费掉可防止双击导致同一动作执行两次
+        //（例如奖品添加页双击 = 添加两个奖品；删除确认双击 = 删掉两个奖品）
+        actions.remove(event.getRawSlot());
         try {
             action.run();
-        } catch (Exception e) {
+        } catch (Exception | LinkageError e) {
             plugin.getLogger().log(Level.SEVERE, "GUI action failed in " + getClass().getSimpleName(), e);
             Msg.send(viewer, "command.execution_error");
         }

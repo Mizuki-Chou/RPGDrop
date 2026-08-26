@@ -168,7 +168,7 @@ public final class I18n {
     // ------------------------------------------------------------------
 
     private Object lookup(String locale, String key) {
-        String norm = normalize(locale);
+        String norm = localeKey(locale);
         Map<String, Object> map = localeData.get(norm);
         Object value = map != null ? map.get(key) : null;
         if (value == null && !DEFAULT_LOCALE.equals(norm)) {
@@ -194,6 +194,26 @@ public final class I18n {
             case "en_us", "en_gb", "en_au", "en_nz", "en_ca", "en" -> "en_us";
             default -> DEFAULT_LOCALE;
         };
+    }
+
+    /**
+     * 把语言码归一为"已加载的语言文件"：
+     * 内置映射（zh_cn/zh_tw/ja_jp/en_us 各变体）优先；
+     * 其余语言码若恰好有管理员自建的对应语言文件（如 lang/ko_kr.yml），直接使用；
+     * 否则回退 en_us。
+     */
+    private String localeKey(String raw) {
+        String mapped = normalize(raw);
+        if (!DEFAULT_LOCALE.equals(mapped)) {
+            return mapped;
+        }
+        if (raw != null) {
+            String lower = raw.toLowerCase(Locale.ROOT).replace('-', '_');
+            if (localeData.containsKey(lower)) {
+                return lower; // 管理员自定义语言文件
+            }
+        }
+        return DEFAULT_LOCALE;
     }
 
     /** 占位符替换：{0} {1} ...（不使用 MessageFormat，避免单引号转义问题）。 */

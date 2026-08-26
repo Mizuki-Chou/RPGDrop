@@ -10,7 +10,7 @@ import org.bukkit.inventory.ItemStack;
  * 绝不保存 ItemStack 本体，也不伪造 NBT/PDC/Lore。
  * 真正生成 ItemStack 由 {@link ItemProviderRegistry} 中注册的 ItemProvider 完成。
  */
-public sealed interface DropItem permits VanillaDropItem, RPGItemDropItem {
+public sealed interface DropItem permits VanillaDropItem, RPGItemDropItem, NekoNYumeDropItem {
 
     /** 掉落物来源类型。 */
     ItemType type();

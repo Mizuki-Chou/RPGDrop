@@ -5,12 +5,12 @@ import java.util.Optional;
 
 /**
  * 掉落物来源类型。
- *
- * 未来扩展：ITEMSADDER、MMOITEMS、ORAXEN ...（配合新的 ItemProvider 实现，勿硬编码）。
+ * 现有：VANILLA（原版）、RPGITEM（RPGItems）、NEKONYUME（NekoNYume，可选依赖）。
  */
 public enum ItemType {
     VANILLA,
-    RPGITEM;
+    RPGITEM,
+    NEKONYUME;
 
     public static Optional<ItemType> parse(String raw) {
         if (raw == null) {

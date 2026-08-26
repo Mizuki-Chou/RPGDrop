@@ -2,6 +2,7 @@ package mizukichou.rpgdrop.gui.page;
 
 import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
+import mizukichou.rpgdrop.drop.LotteryManager;
 import mizukichou.rpgdrop.drop.DropRule;
 import mizukichou.rpgdrop.gui.Gui;
 import mizukichou.rpgdrop.gui.GuiManager;
@@ -33,11 +34,13 @@ public final class EntityPickerGui extends Gui {
     );
 
     private final DropManager dropManager;
+    private final LotteryManager lotteryManager;
     private final DropRule rule;
 
-    public EntityPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, DropRule rule) {
+    public EntityPickerGui(RPGDropPlugin plugin, GuiManager manager, Player viewer, DropManager dropManager, LotteryManager lotteryManager, DropRule rule) {
         super(plugin, manager, viewer);
         this.dropManager = dropManager;
+        this.lotteryManager = lotteryManager;
         this.rule = rule;
     }
 
@@ -72,9 +75,9 @@ public final class EntityPickerGui extends Gui {
         button(47, Items.icon(Material.OAK_SIGN, t("gui.entity.search"), t("gui.entity.search_lore")), () ->
                 manager.requestTextInput(viewer, "gui.entity.search_prompt",
                         this::onSearch,
-                        () -> navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, rule))));
+                        () -> navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule))));
         button(48, Items.icon(Material.ARROW, t("back")),
-                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, rule)));
+                () -> navigate(new RuleEditorGui(plugin, manager, viewer, dropManager, lotteryManager, rule)));
     }
 
     private void toggle(String mob) {
@@ -102,7 +105,7 @@ public final class EntityPickerGui extends Gui {
         } catch (IllegalArgumentException e) {
             Msg.send(viewer, "gui.entity.unknown", raw);
         }
-        navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, rule));
+        navigate(new EntityPickerGui(plugin, manager, viewer, dropManager, lotteryManager, rule));
     }
 
     @Override

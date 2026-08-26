@@ -1,0 +1,22 @@
+# ============================================
+# RPGDrop 抽奖规则（Release 2 新增）
+# 手持触发物右键 -> 消耗1个 -> 抽奖一次
+# 权重模型：一条规则内所有奖品的 weight 合计必须正好为 100%，
+# 每次抽奖必中其中一个奖品（落在哪个权重区间就中哪个）。
+# weight 单位是百分比：1 = 1%
+# ============================================
+
+lotteries:
+  # 示例规则（默认关闭，避免误消耗玩家物品；用 /rdrop gui 开启）
+  lucky_box:
+    enabled: false
+    trigger:
+      type: VANILLA
+      material: DIAMOND
+    prizes:
+      - type: RPGITEM
+        id: nekomoon_broke
+        weight: 1.0
+      - type: VANILLA
+        material: EMERALD
+        weight: 99.0

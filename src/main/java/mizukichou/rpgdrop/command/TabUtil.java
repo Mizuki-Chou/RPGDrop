@@ -1,5 +1,6 @@
 package mizukichou.rpgdrop.command;
 
+import mizukichou.rpgdrop.RPGDropPlugin;
 import mizukichou.rpgdrop.drop.DropManager;
 import mizukichou.rpgdrop.drop.DropRule;
 
@@ -13,6 +14,22 @@ import java.util.Locale;
 public final class TabUtil {
 
     private TabUtil() {
+    }
+
+    /**
+     * 物品类型补全项：只包含对应插件已安装的类型
+     * （没装 RPGItems / NekoNYume 时，补全里不会出现 rpgitem / nyn）。
+     */
+    public static List<String> itemKinds(RPGDropPlugin plugin) {
+        java.util.ArrayList<String> kinds = new java.util.ArrayList<>();
+        kinds.add("vanilla");
+        if (plugin.isRpgItemsAvailable()) {
+            kinds.add("rpgitem");
+        }
+        if (plugin.isNekoNYumeAvailable()) {
+            kinds.add("nyn");
+        }
+        return kinds;
     }
 
     /** 按前缀过滤候选词。 */

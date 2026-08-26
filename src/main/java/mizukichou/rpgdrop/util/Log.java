@@ -29,7 +29,11 @@ public final class Log {
         logger.warning(message);
     }
 
-    /** 记录严重错误（含完整堆栈），禁止 printStackTrace()。 */
+    /** 只记消息的错误日志（不带堆栈）。 */
+    public void severe(String message) {
+        logger.log(Level.SEVERE, message);
+    }
+
     public void severe(String message, Throwable throwable) {
         logger.log(Level.SEVERE, message, throwable);
     }

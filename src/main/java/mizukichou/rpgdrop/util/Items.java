@@ -51,6 +51,23 @@ public final class Items {
         return stack;
     }
 
+    /** 在已有物品上追加 lore 行（用于真实物品预览）。 */
+    public static ItemStack withLore(ItemStack stack, String... lore) {
+        ItemMeta meta = stack.getItemMeta();
+        java.util.List<net.kyori.adventure.text.Component> lines = new java.util.ArrayList<>();
+        if (meta.lore() != null) {
+            lines.addAll(meta.lore());
+        }
+        if (lore != null) {
+            for (String line : lore) {
+                lines.add(LEGACY.deserialize(line));
+            }
+        }
+        meta.lore(lines);
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
     /** 生物对应的刷怪蛋图标；找不到时返回兜底图标。 */
     public static ItemStack mobIcon(String entityTypeName) {
         Material egg = Materials.parse(entityTypeName + "_SPAWN_EGG").orElse(Material.BAT_SPAWN_EGG);

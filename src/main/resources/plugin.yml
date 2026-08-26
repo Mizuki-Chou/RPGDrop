@@ -8,6 +8,7 @@ author: mizukichou
 # 软依赖：有 RPGItems 则启用 RPGItem 掉落，没有也能正常运行原版物品掉落
 softdepend:
   - RPGItems
+  - NekoNYume
 
 commands:
   rpgdrop:
